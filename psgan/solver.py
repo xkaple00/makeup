@@ -173,6 +173,9 @@ class Solver(Track):
         with torch.no_grad():
             cur_prama = self.generate(real_A, real_B, None, None, mask_A, mask_B, 
                                       diff_A, diff_B, ret=True)
+            print('cur_prama[0]',cur_prama[0].shape)
+            print('cur_prama[1]',cur_prama[1].shape)
+
             fake_A = self.generate(real_A, real_B, None, None, mask_A, mask_B, 
                                    diff_A, diff_B, gamma=cur_prama[0], beta=cur_prama[1])
         fake_A = fake_A.squeeze(0)

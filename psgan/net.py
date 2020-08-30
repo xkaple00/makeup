@@ -218,29 +218,16 @@ class Generator(nn.Module, Track):
         c: content, stands for source image. shape: (b, c, h, w)
         s: style, stands for reference image. shape: (b, c, h, w)
         mask_list_c: lip, skin, eye. (b, 1, h, w)
-        """
-
-        # print("diff_c", diff_c.shape)
-        # print("diff_s", diff_s.shape)
-
-        # print("c", c.shape)
-        # print("s", s.shape)
-
-        #Contetnt and style
-        # permute = [0, 3, 2, 1]
-        
+        """     
 
         save_path_c = 'save_path_c.png'
         save_path_s = 'save_path_s.png'
 
-        # c_permuted = c.cpu()[:, permute]
-        # s_permuted = s.cpu()[:, permute]
-
         c_permuted = c.cpu()
         s_permuted = s.cpu()
 
-        transforms.ToPILImage()(c_permuted[0]).save(save_path_c)
-        transforms.ToPILImage()(s_permuted[0]).save(save_path_s)
+        # transforms.ToPILImage()(c_permuted[0]).save(save_path_c)
+        # transforms.ToPILImage()(s_permuted[0]).save(save_path_s)
         
         #Binary masks for lip, skin, eye
         save_path_mask_c_lips = 'save_path_mask_c_lips.png'
@@ -252,24 +239,15 @@ class Generator(nn.Module, Track):
         save_path_mask_c_eyes = 'save_path_mask_c_eyes.png'
         save_path_mask_s_eyes = 'save_path_mask_s_eyes.png'
 
-        # Image.fromarray((mask_c[0].numpy() * 255).astype(np.uint8)).save(save_path_mask_c)
-        # Image.fromarray((mask_s[0].numpy() * 255).astype(np.uint8)).save(save_path_mask_s)
 
-        transforms.ToPILImage()(mask_c[0].cpu()).save(save_path_mask_c_lips)
-        transforms.ToPILImage()(mask_s[0].cpu()).save(save_path_mask_s_lips)
+        # transforms.ToPILImage()(mask_c[0].cpu()).save(save_path_mask_c_lips)
+        # transforms.ToPILImage()(mask_s[0].cpu()).save(save_path_mask_s_lips)
 
-        transforms.ToPILImage()(mask_c[1].cpu()).save(save_path_mask_c_skin)
-        transforms.ToPILImage()(mask_s[1].cpu()).save(save_path_mask_s_skin)
+        # transforms.ToPILImage()(mask_c[1].cpu()).save(save_path_mask_c_skin)
+        # transforms.ToPILImage()(mask_s[1].cpu()).save(save_path_mask_s_skin)
 
-        transforms.ToPILImage()(mask_c[2].cpu()).save(save_path_mask_c_eyes)
-        transforms.ToPILImage()(mask_s[2].cpu()).save(save_path_mask_s_eyes)
-
-        # #Difference
-        # save_path_c_diff = 'save_path_c_diff.png'
-        # save_path_s_diff = 'save_path_s_diff.png'
-
-        # transforms.ToPILImage()(diff_c[0]).save(save_path_c_diff)
-        # transforms.ToPILImage()(diff_s[0]).save(save_path_s_diff)
+        # transforms.ToPILImage()(mask_c[2].cpu()).save(save_path_mask_c_eyes)
+        # transforms.ToPILImage()(mask_s[2].cpu()).save(save_path_mask_s_eyes)
 
         self.track("start")
         # forward c in tnet(MANet)
@@ -293,7 +271,7 @@ class Generator(nn.Module, Track):
         self.track("downsampling")
 
         # bottleneck
-        # print('gamma_1', gamma.shape)
+        print('gamma_1', gamma)
         for i in range(6):
             if gamma is None and i <= 2:
                 cur_pnet_bottleneck = getattr(self, f'pnet_bottleneck_{i+1}')
