@@ -1,6 +1,6 @@
 # makeup transfer
 
-## Interpolated makeup transfer only in the lips region
+## Interpolated makeup transfer applied only in the lips region
 ![Farmers Market Finder Demo](Collage1.png)
 
 Fork on repository  "PSGAN: Pose and Expression Robust Spatial-Aware GAN for Customizable Makeup Transfer".
