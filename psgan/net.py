@@ -139,8 +139,8 @@ class Generator(nn.Module, Track):
         self.tnet_out = layers
         Track.__init__(self)
 
-    @staticmethod
-    def atten_feature(mask_s, weight, gamma_s, beta_s, atten_module_g, atten_module_b):
+    # @staticmethod
+    def atten_feature(self, mask_s, weight, gamma_s, beta_s, atten_module_g, atten_module_b, transfer_lips, transfer_skin, transfer_eyes):
         """
         feature size: (1, c, h, w)
         mask_c(s): (3, 1, h, w)
@@ -148,6 +148,7 @@ class Generator(nn.Module, Track):
         return: (1, c, h, w)
         """
         channel_num = gamma_s.shape[1]
+
 
         mask_s_re = F.interpolate(mask_s, size=gamma_s.shape[2:]).repeat(1, channel_num, 1, 1)
         gamma_s_re = gamma_s.repeat(3, 1, 1, 1)
@@ -158,8 +159,9 @@ class Generator(nn.Module, Track):
         gamma = atten_module_g(gamma_s, weight)  # (3, c, h, w)
         beta = atten_module_b(beta_s, weight)
 
-        gamma = (gamma[0] + gamma[1] + gamma[2]).unsqueeze(0)  # (c, h, w) combine the three parts
-        beta = (beta[0] + beta[1] + beta[2]).unsqueeze(0)
+        # gamma = (gamma[0] * transfer_lips + gamma[1] * transfer_skin + gamma[2] * transfer_eyes).unsqueeze(0)  # (c, h, w) combine the three parts
+        gamma = (gamma[0] * True + gamma[1] * False + gamma[2] * False).unsqueeze(0)  # (c, h, w) combine the three parts
+        beta = (beta[0] * True  + beta[1] * False + beta[2] * False).unsqueeze(0)
         return gamma, beta
 
     def get_weight(self, mask_c, mask_s, fea_c, fea_s, diff_c, diff_s):
@@ -174,18 +176,32 @@ class Generator(nn.Module, Track):
         channel_num = fea_s.shape[1]
 
         mask_c_re = F.interpolate(mask_c, size=64).repeat(1, channel_num, 1, 1)  # (3, c, h, w)
+        print("mask_c_re_shape", mask_c_re.shape)
         fea_c = fea_c.repeat(3, 1, 1, 1)                 # (3, c, h, w)
+        print("fea_c", fea_c.shape)
         fea_c = fea_c * mask_c_re                        # (3, c, h, w) 3 stands for 3 parts
+        print("fea_c", fea_c.shape)
 
         mask_s_re = F.interpolate(mask_s, size=64).repeat(1, channel_num, 1, 1)
+        print("mask_s_re", mask_s_re.shape)
+
         fea_s = fea_s.repeat(3, 1, 1, 1)
+        print("fea_s", fea_s.shape)
+
         fea_s = fea_s * mask_s_re
+        print("fea_s", fea_s.shape)
 
         theta_input = torch.cat((fea_c * 0.01, diff_c), dim=1)
+        print("theta_input", theta_input.shape)
+
         phi_input = torch.cat((fea_s * 0.01, diff_s), dim=1)
+        print("phi_input", phi_input.shape)
 
         theta_target = theta_input.view(batch_size, -1, HW) # (N, C+136, H*W)
+        print("theta_target", theta_target.shape)
+
         theta_target = theta_target.permute(0, 2, 1)        # (N, H*W, C+136)
+        print("theta_target", theta_target.shape)
 
         phi_source = phi_input.view(batch_size, -1, HW)     # (N, C+136, H*W)
         self.track("before mask")
@@ -206,13 +222,13 @@ class Generator(nn.Module, Track):
         weight = F.softmax(weight, dim=-1)
         # print('weight after softmax', weight.shape)
         weight = weight[weight_ind[0], weight_ind[1], weight_ind[2]]
-        # print('weight after ind', weight.shape)
+        print('weight after ind', weight.shape)
         ret = torch.sparse.FloatTensor(weight_ind, weight, torch.Size([3, HW, HW]))
-        # print('ret', ret.shape)
+        print('ret', ret.shape)
         self.track("after bmm")
         return ret
 
-    def forward(self, c, s, mask_c, mask_s, diff_c, diff_s, gamma=None, beta=None, ret=False):
+    def forward(self, c, s, mask_c, mask_s, diff_c, diff_s, gamma=None, beta=None, ret=False, transfer_lips=True, transfer_skin=True, transfer_eyes=True):
         c, s, mask_c, mask_s, diff_c, diff_s = [x.squeeze(0) if x.ndim == 5 else x for x in [c, s, mask_c, mask_s, diff_c, diff_s]]
         """attention version
         c: content, stands for source image. shape: (b, c, h, w)
@@ -271,7 +287,7 @@ class Generator(nn.Module, Track):
         self.track("downsampling")
 
         # bottleneck
-        print('gamma_1', gamma)
+        # print('gamma_1', gamma)
         for i in range(6):
             if gamma is None and i <= 2:
                 cur_pnet_bottleneck = getattr(self, f'pnet_bottleneck_{i+1}')
@@ -282,13 +298,17 @@ class Generator(nn.Module, Track):
                 if gamma is None:               # not in test_mix
                     s, gamma, beta = self.simple_spade(s)
                     weight = self.get_weight(mask_c, mask_s, c_tnet, s, diff_c, diff_s)
-                    gamma, beta = self.atten_feature(mask_s, weight, gamma, beta, self.atten_bottleneck_g, self.atten_bottleneck_b)
+                    gamma, beta = self.atten_feature(mask_s, weight, gamma, beta, self.atten_bottleneck_g, self.atten_bottleneck_b,\
+                        transfer_lips, transfer_skin, transfer_eyes)
+                    print('gamma_shape', gamma.shape)
+                    transforms.ToPILImage()(gamma[0].cpu()).save('results/gamma_{}.png'.format(i))
+                    transforms.ToPILImage()(beta[0].cpu()).save('results/beta_{}.png'.format(i))
                     if ret:
                         return [gamma, beta]
                 # else:                       # in test mode
                     # gamma, beta = param_A[0]*w + param_B[0]*(1-w), param_A[1]*w + param_B[1]*(1-w)
-                print('gamma_2', gamma.shape)
-                print('beta', beta.shape)
+                # print('gamma_2', gamma.shape)
+                # print('beta', beta.shape)
                 c_tnet = c_tnet * (1 + gamma) + beta    # apply makeup transfer using makeup matrices
 
             if gamma is None and i <= 2:

@@ -27,12 +27,12 @@ def main(save_path='results/transferred_image',
         help="path to source image")
     parser.add_argument(
         "--reference_path_1",
-        default="../dataset/makeup1.jpg",
+        default="../dataset/makeup2.jpg",
         metavar="FILE",
         help="path to reference image 1")
     parser.add_argument(
         "--reference_path_2",
-        default="../dataset/makeup2.jpg",
+        default="../dataset/makeup4.jpg",
         metavar="FILE",
         help="path to reference image 2")
     parser.add_argument(
@@ -41,15 +41,15 @@ def main(save_path='results/transferred_image',
         help="path to reference images")
     parser.add_argument(
         "--transfer_lips",
-        default=1,
+        default=True,
         help="transfer makeup from lips")
     parser.add_argument(
         "--transfer_skin",
-        default=1,
+        default=True,
         help="transfer makeup from skin")
     parser.add_argument(
         "--transfer_eyes",
-        default=1,
+        default=True,
         help="transfer makeup from eyes")
     parser.add_argument(
         "--n_ref_images",
@@ -71,7 +71,8 @@ def main(save_path='results/transferred_image',
     args = parser.parse_args()
     config = setup_config(args)
 
-    assert args.n_ref_images in [1,2], "Number of reference images must be 1 or 2"
+    # assert_list = [1,2]
+    # assert args.n_ref_images in assert_list, "Number of reference images must be 1 or 2"
 
     # Using the second cpu
     inference = Inference(
@@ -86,8 +87,8 @@ def main(save_path='results/transferred_image',
     # for reference_path in reference_paths:
 
     for blending_ratio in np.arange(0., 1.2, 0.2):
-        print('reference_path_1', args.reference_path_1)
-        print('reference_path_2', args.reference_path_2)
+        # print('reference_path_1', args.reference_path_1)
+        # print('reference_path_2', args.reference_path_2)
 
         # if not reference_path_1.is_file():
         #     print(reference_path_1, "is not a valid file.")
@@ -104,17 +105,17 @@ def main(save_path='results/transferred_image',
             reference_2 = source
 
         # Transfer the psgan from reference to source.
-        image_1, face_1, binary_masks_1 = inference.transfer(source, reference_1, with_face=True)
-        image_2, face_2, binary_masks_2 = inference.transfer(source, reference_2, with_face=True)
+        image_1, face_1, binary_masks_1 = inference.transfer(source, reference_1, with_face=True, 
+        transfer_lips=args.transfer_lips, transfer_skin=args.transfer_skin, transfer_eyes=args.transfer_eyes)
+        image_2, face_2, binary_masks_2 = inference.transfer(source, reference_2, with_face=True, 
+        transfer_lips=args.transfer_lips, transfer_skin=args.transfer_skin, transfer_eyes=args.transfer_eyes)
 
         source_crop = source.crop(
             (face_1.left(), face_1.top(), face_1.right(), face_1.bottom()))
 
         source_crop = source_crop.resize((config.DATA.IMG_SIZE, config.DATA.IMG_SIZE), Image.ANTIALIAS)
 
-        print('args.transfer_lips', type(args.transfer_lips))
-
-        binary_mask_1 = np.expand_dims((binary_masks_1[0] * 1 + binary_masks_1[1] * 1 + binary_masks_1[2] * 0).cpu().numpy()[0],-1)
+        binary_mask_1 = np.expand_dims((binary_masks_1[0] * 1 + binary_masks_1[1] * 1 + binary_masks_1[2] * 1).cpu().numpy()[0],-1)
 
         cv2.imwrite('results/binary_mask_1.png', binary_mask_1*255)
         binary_mask_2 = np.ones(binary_mask_1.shape) - binary_mask_1
@@ -122,23 +123,22 @@ def main(save_path='results/transferred_image',
 
         image = Image.blend(image_1, image_2, 1-blending_ratio)
 
-        image_1.save(save_path_image_1 + '.png')
-        image_2.save(save_path_image_2 + '.png')
+        # image_1.save(save_path_image_1 + '.png')
+        # image_2.save(save_path_image_2 + '.png')
         
-        # image_cv = cv2.addWeighted(np.array(image_1)[~binary_mask_1]==source, blending_ratio, np.array(image_2)[~binary_mask_1]==source, 1.-blending_ratio, gamma=0, dtype = cv2.CV_32F)
+        # # image_cv = cv2.addWeighted(np.array(image_1)[~binary_mask_1]==source, blending_ratio, np.array(image_2)[~binary_mask_1]==source, 1.-blending_ratio, gamma=0, dtype = cv2.CV_32F)
 
-        image_cv = cv2.addWeighted(np.where(binary_mask_1>0.5, image_1, source_crop), blending_ratio, np.where(binary_mask_1>0.5, image_2, source_crop), 1.-blending_ratio, gamma=0, dtype = cv2.CV_32F)
+        # image_cv = cv2.addWeighted(np.where(binary_mask_1>0.5, image_1, source_crop), blending_ratio, np.where(binary_mask_1>0.5, image_2, source_crop), 1.-blending_ratio, gamma=0, dtype = cv2.CV_32F)
         
-        # image_cv = image_cv[:,:,::-1] #BGR to RGB
+        # # image_cv = image_cv[:,:,::-1] #BGR to RGB
 
-        image_cv = Image.fromarray(np.uint8(image_cv))
+        # image_cv = Image.fromarray(np.uint8(image_cv))
 
-        image_cv = postprocess(source_crop, image_cv)
+        # image_cv = postprocess(source_crop, image_cv)
 
-        image_cv.save('results/'+'image_cv'+str(round(blending_ratio,2))+'.png')
+        # image_cv.save('results/'+'image_cv'+str(round(blending_ratio,2))+'.png')
 
-        print('image, face')
-        print("binary_masks_1", binary_masks_1.shape)
+        # print("binary_masks_1", binary_masks_1.shape)
         image.save(save_path_image + '_' + str(round(blending_ratio, 2)) + '.png')
 
         source_crop = source.crop(
@@ -151,7 +151,7 @@ def main(save_path='results/transferred_image',
             start = time.time()
             for _ in range(100):
                 inference.transfer(source, reference_1)
-            print("Time cost for 100 iters: ", time.time() - start)
+            # print("Time cost for 100 iters: ", time.time() - start)
 
 
 if __name__ == '__main__':

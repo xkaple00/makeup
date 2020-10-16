@@ -22,7 +22,7 @@ class Inference:
         self.solver = Solver(config, device, inference=model_path)
         self.preprocess = PreProcess(config, device)
 
-    def transfer(self, source: Image, reference: Image, with_face=False):
+    def transfer(self, source: Image, reference: Image, with_face=False, transfer_lips=True, transfer_skin=True, transfer_eyes=True):
         """
         Args:
             source (Image): The image where makeup will be transfered to.
@@ -39,14 +39,14 @@ class Inference:
 
         for i in range(len(source_input)):
             source_input[i] = source_input[i].to(self.device)
-            print('source_input', source_input[i].shape)
+            # print('source_input', source_input[i].shape)
 
         for i in range(len(reference_input)):
             reference_input[i] = reference_input[i].to(self.device)
-            print('reference_input', reference_input[i].shape)
+            # print('reference_input', reference_input[i].shape)
 
         # TODO: Abridge the parameter list.
-        result = self.solver.test(*source_input, *reference_input)
+        result = self.solver.test(*source_input, *reference_input, transfer_lips, transfer_skin, transfer_eyes)
         
         if with_face:
             return result, crop_face, source_input[1]

@@ -158,26 +158,27 @@ class Solver(Track):
             print('loaded trained discriminator B {}..!'.format(D_B_path))
 
     def generate(self, org_A, ref_B, lms_A=None, lms_B=None, mask_A=None, mask_B=None, 
-                 diff_A=None, diff_B=None, gamma=None, beta=None, ret=False):
+                 diff_A=None, diff_B=None, gamma=None, beta=None, ret=False, 
+                 transfer_lips=True, transfer_skin=True, transfer_eyes=True):
         """org_A is content, ref_B is style"""
-        # lms_A.save('lms_A')
+        # lms_A.save('lms_A'), 
         # print('lms_A')
-        res = self.G(org_A, ref_B, mask_A, mask_B, diff_A, diff_B, gamma, beta, ret)
+        res = self.G(org_A, ref_B, mask_A, mask_B, diff_A, diff_B, gamma, beta, ret, transfer_lips, transfer_skin, transfer_eyes)
         return res
 
     # mask attribute: 0:background 1:face 2:left-eyebrown 3:right-eyebrown 4:left-eye 5: right-eye 6: nose
     # 7: upper-lip 8: teeth 9: under-lip 10:hair 11: left-ear 12: right-ear 13: neck
 
-    def test(self, real_A, mask_A, diff_A, real_B, mask_B, diff_B):
+    def test(self, real_A, mask_A, diff_A, real_B, mask_B, diff_B, transfer_lips, transfer_skin, transfer_eyes):
         cur_prama = None
         with torch.no_grad():
             cur_prama = self.generate(real_A, real_B, None, None, mask_A, mask_B, 
-                                      diff_A, diff_B, ret=True)
+            diff_A, diff_B, ret=True, transfer_lips=transfer_lips, transfer_skin=transfer_skin, transfer_eyes=transfer_eyes)
             print('cur_prama[0]',cur_prama[0].shape)
             print('cur_prama[1]',cur_prama[1].shape)
 
             fake_A = self.generate(real_A, real_B, None, None, mask_A, mask_B, 
-                                   diff_A, diff_B, gamma=cur_prama[0], beta=cur_prama[1])
+            diff_A, diff_B, gamma=cur_prama[0], beta=cur_prama[1], transfer_lips=transfer_lips, transfer_skin=transfer_skin, transfer_eyes=transfer_eyes)
         fake_A = fake_A.squeeze(0)
 
         # normalize
